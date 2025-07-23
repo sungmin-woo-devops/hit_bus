@@ -1,0 +1,16 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Flask 서버 실행",
+			"type": "shell",
+			"command": "C:/Python310/python.exe",
+			"args": [
+				"app.py"
+			],
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}
