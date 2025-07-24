@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}홈페이지{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <!-- D3.js 라이브러리 -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <!-- TopoJSON 라이브러리 (한국 지도 데이터용) -->
+    <script src="https://unpkg.com/topojson-client@3"></script>
+    
+    <!-- 추가 CSS 블록 -->
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
     <header>
@@ -15,19 +24,22 @@
                 </div>
                 <ul class="nav-menu">
                     <li class="nav-item">
-                        <a href="{{ url_for('home') }}" class="nav-link">메인</a>
+                        <a href="{{ url_for('home') }}" class="nav-link">개요</a>
                     </li>
                     <li class="nav-item">
-                        <a href="{{ url_for('about') }}" class="nav-link">버스노선</a>
+                        <a href="{{ url_for('get_team1') }}" class="nav-link">정회성</a>
                     </li>
                     <li class="nav-item">
-                        <a href="{{ url_for('services') }}" class="nav-link">정류장</a>
+                        <a href="{{ url_for('get_team2') }}" class="nav-link">강충원</a>
                     </li>
                     <li class="nav-item">
-                        <a href="{{ url_for('products') }}" class="nav-link">차트</a>
+                        <a href="{{ url_for('get_team3') }}" class="nav-link">김승환</a>
                     </li>
                     <li class="nav-item">
-                        <a href="{{ url_for('contact') }}" class="nav-link">지도</a>
+                        <a href="{{ url_for('get_team4') }}" class="nav-link">우성민</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('get_team5') }}" class="nav-link">서익희</a>
                     </li>
                 </ul>
                 <div class="hamburger">
@@ -50,5 +62,8 @@
     </footer>
 
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    
+    <!-- 추가 JavaScript 블록 -->
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

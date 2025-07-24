@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}D3.js 지도 - MyWebsite{% endblock %}
+
+{% block extra_css %}
+<style>
+    .map-container {
+        width: 100%;
+        height: 600px;
+        margin: 20px 0;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    .map-info {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .map-controls {
+        margin: 10px 0;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    
+    .map-controls button {
+        padding: 8px 16px;
+        border: 1px solid #ddd;
+        background: white;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+    
+    .map-controls button:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .map-controls button.active {
+        background-color: #007bff;
+        color: white;
+        border-color: #007bff;
+    }
+    
+    .data-panel {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-top: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .data-panel h3 {
+        margin-top: 0;
+        color: #333;
+    }
+    
+    .data-list {
+        list-style: none;
+        padding: 0;
+    }
+    
+    .data-list li {
+        padding: 8px 0;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .data-list li:last-child {
+        border-bottom: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="map-info">
+        <h2>D3.js 한국 지도 시각화</h2>
+        <p>이 페이지는 D3.js를 사용하여 한국 지도에 버스 정류장과 노선 정보를 시각화합니다.</p>
+    </div>
+    
+    <div class="map-controls">
+        <button id="loadMap" class="active">지도 로드</button>
+        <button id="addStops">정류장 표시</button>
+        <button id="addRoutes">노선 표시</button>
+        <button id="enableZoom">줌 활성화</button>
+        <button id="resetMap">지도 리셋</button>
+    </div>
+    
+    <div id="d3-map" class="map-container"></div>
+    
+    <div class="data-panel">
+        <h3>선택된 정보</h3>
+        <div id="selected-info">
+            <p>지역이나 정류장을 클릭하여 정보를 확인하세요.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/d3-map.js') }}"></script>
+<script>
+    // D3.js 지도 인스턴스 생성
+    let d3Map;
+    
+    // 페이지 로드 시 지도 초기화
+    document.addEventListener('DOMContentLoaded', function() {
+        // 지도 컨테이너 크기 설정
+        const container = document.getElementById('d3-map');
+        const containerWidth = container.offsetWidth;
+        const containerHeight = 600;
+        
+        // D3.js 지도 생성
+        d3Map = new D3Map('d3-map', {
+            width: containerWidth,
+            height: containerHeight,
+            center: [127.5, 36.5], // 한국 중심 좌표
+            scale: 4000
+        });
+        
+        // 기본 지도 로드
+        d3Map.loadKoreaMap();
+        
+        // 이벤트 리스너 설정
+        setupEventListeners();
+    });
+    
+    // 이벤트 리스너 설정
+    function setupEventListeners() {
+        // 지도 로드 버튼
+        document.getElementById('loadMap').addEventListener('click', function() {
+            d3Map.loadKoreaMap();
+            updateButtonState(this);
+        });
+        
+        // 정류장 표시 버튼
+        document.getElementById('addStops').addEventListener('click', function() {
+            fetch('/api/bus-stops')
+                .then(response => response.json())
+                .then(data => {
+                    d3Map.addBusStops(data);
+                    updateButtonState(this);
+                })
+                .catch(error => {
+                    console.error('정류장 데이터 로드 실패:', error);
+                    // 폴백 데이터 사용
+                    const sampleStops = [
+                        { name: "수원시청", lat: 37.2636, lng: 127.0286, routes: 15 },
+                        { name: "수원역", lat: 37.2659, lng: 127.0001, routes: 23 },
+                        { name: "수원고등학교", lat: 37.2800, lng: 127.0150, routes: 8 }
+                    ];
+                    d3Map.addBusStops(sampleStops);
+                    updateButtonState(this);
+                });
+        });
+        
+        // 노선 표시 버튼
+        document.getElementById('addRoutes').addEventListener('click', function() {
+            fetch('/api/bus-routes')
+                .then(response => response.json())
+                .then(data => {
+                    d3Map.addBusRoutes(data);
+                    updateButtonState(this);
+                })
+                .catch(error => {
+                    console.error('노선 데이터 로드 실패:', error);
+                    // 폴백 데이터 사용
+                    const sampleRoutes = [
+                        {
+                            name: "수원시청 ↔ 수원역",
+                            coordinates: [[127.0286, 37.2636], [127.0001, 37.2659]],
+                            stops: 8
+                        },
+                        {
+                            name: "수원고등학교 ↔ 수원시민공원",
+                            coordinates: [[127.0150, 37.2800], [127.0200, 37.2750]],
+                            stops: 5
+                        }
+                    ];
+                    d3Map.addBusRoutes(sampleRoutes);
+                    updateButtonState(this);
+                });
+        });
+        
+        // 줌 활성화 버튼
+        document.getElementById('enableZoom').addEventListener('click', function() {
+            d3Map.enableZoom();
+            updateButtonState(this);
+        });
+        
+        // 지도 리셋 버튼
+        document.getElementById('resetMap').addEventListener('click', function() {
+            d3Map.reset();
+            d3Map.loadKoreaMap();
+            updateButtonState(this);
+        });
+        
+        // 지역 선택 이벤트
+        document.getElementById('d3-map').addEventListener('regionSelected', function(event) {
+            const region = event.detail;
+            displaySelectedInfo('지역', region.properties.CTP_KOR_NM);
+        });
+        
+        // 정류장 선택 이벤트
+        document.getElementById('d3-map').addEventListener('busStopSelected', function(event) {
+            const stop = event.detail;
+            displaySelectedInfo('정류장', `${stop.name} (${stop.routes}개 노선)`);
+        });
+    }
+    
+    // 버튼 상태 업데이트
+    function updateButtonState(activeButton) {
+        // 모든 버튼에서 active 클래스 제거
+        document.querySelectorAll('.map-controls button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // 클릭된 버튼에 active 클래스 추가
+        activeButton.classList.add('active');
+    }
+    
+    // 선택된 정보 표시
+    function displaySelectedInfo(type, info) {
+        const infoContainer = document.getElementById('selected-info');
+        infoContainer.innerHTML = `
+            <h4>선택된 ${type}</h4>
+            <p><strong>${info}</strong></p>
+            <p>선택 시간: ${new Date().toLocaleString()}</p>
+        `;
+    }
+    
+    // 창 크기 변경 시 지도 크기 조정
+    window.addEventListener('resize', function() {
+        if (d3Map) {
+            const container = document.getElementById('d3-map');
+            const containerWidth = container.offsetWidth;
+            d3Map.resize(containerWidth, 600);
+        }
+    });
+</script>
+{% endblock %}
