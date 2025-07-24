@@ -1,7 +1,8 @@
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, send_file
 import json
 import os
 import pandas as pd
+from map.map import BusRouteMapper, create_bus_route_map, get_routes_data_summary
 
 app = Flask(__name__)
 
@@ -117,7 +118,28 @@ def get_team3():
 
 @app.route('/team4')
 def get_team4():
-    return render_template('team4.html')
+    """Team4 페이지 - Folium 버스 노선 지도"""
+    try:
+        # 버스 노선 데이터 요약 정보 가져오기
+        json_path = os.path.join(os.path.dirname(__file__), 'map', 'json', 'custom_routes.json')
+        routes_summary = get_routes_data_summary(json_path)
+        
+        # 지도 파일 경로 설정
+        map_file_path = os.path.join(os.path.dirname(__file__), 'static', 'bus_routes_map.html')
+        
+        # 지도 파일이 없으면 생성
+        if not os.path.exists(map_file_path):
+            create_bus_route_map(json_path, map_file_path)
+        
+        return render_template('team4.html', 
+                             routes_summary=routes_summary,
+                             has_map=os.path.exists(map_file_path))
+    except Exception as e:
+        print(f"Team4 페이지 로드 오류: {e}")
+        return render_template('team4.html', 
+                             routes_summary=[],
+                             has_map=False,
+                             error_message=str(e))
 
 @app.route('/team5')
 def get_team5():
@@ -265,6 +287,61 @@ def get_map_data():
         return jsonify(data)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+# Folium 지도 관련 API 엔드포인트
+@app.route('/api/bus-map')
+def get_bus_map():
+    """버스 노선 지도 HTML 파일 반환"""
+    try:
+        map_file_path = os.path.join(os.path.dirname(__file__), 'static', 'bus_routes_map.html')
+        
+        # 지도 파일이 없으면 생성
+        if not os.path.exists(map_file_path):
+            json_path = os.path.join(os.path.dirname(__file__), 'map', 'json', 'custom_routes.json')
+            create_bus_route_map(json_path, map_file_path)
+        
+        return send_file(map_file_path)
+    except Exception as e:
+        return jsonify({"error": f"지도 파일을 찾을 수 없습니다: {str(e)}"}), 404
+
+@app.route('/api/regenerate-bus-map')
+def regenerate_bus_map():
+    """버스 노선 지도 재생성"""
+    try:
+        json_path = os.path.join(os.path.dirname(__file__), 'map', 'json', 'custom_routes.json')
+        map_file_path = os.path.join(os.path.dirname(__file__), 'static', 'bus_routes_map.html')
+        
+        # 지도 재생성
+        create_bus_route_map(json_path, map_file_path)
+        
+        return jsonify({
+            "success": True,
+            "message": "지도가 성공적으로 재생성되었습니다.",
+            "map_url": "/api/bus-map"
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": f"지도 생성 실패: {str(e)}"
+        }), 500
+
+@app.route('/api/routes-summary')
+def get_routes_summary_api():
+    """버스 노선 요약 정보 API"""
+    try:
+        json_path = os.path.join(os.path.dirname(__file__), 'map', 'json', 'custom_routes.json')
+        routes_summary = get_routes_data_summary(json_path)
+        
+        return jsonify({
+            "success": True,
+            "total_routes": len(routes_summary),
+            "routes": routes_summary
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": f"노선 데이터 로드 실패: {str(e)}"
+        }), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}D3.js 지도 - MyWebsite{% endblock %}
+{% block title %}버스 노선 지도 - MyWebsite{% endblock %}
 
 {% block extra_css %}
 <style>
     .map-container {
         width: 100%;
-        height: 600px;
+        height: 700px;
         margin: 20px 0;
         border: 1px solid #ddd;
         border-radius: 8px;
@@ -61,18 +61,89 @@
         color: #333;
     }
     
-    .data-list {
-        list-style: none;
-        padding: 0;
+    .routes-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 15px;
+        margin-top: 15px;
     }
     
-    .data-list li {
-        padding: 8px 0;
-        border-bottom: 1px solid #eee;
+    .route-card {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 6px;
+        border-left: 4px solid #007bff;
     }
     
-    .data-list li:last-child {
-        border-bottom: none;
+    .route-card h5 {
+        margin: 0 0 10px 0;
+        color: #007bff;
+    }
+    
+    .route-card p {
+        margin: 5px 0;
+        font-size: 14px;
+    }
+    
+    .loading {
+        text-align: center;
+        padding: 50px;
+        color: #666;
+    }
+    
+    .error-message {
+        background: #f8d7da;
+        color: #721c24;
+        padding: 15px;
+        border-radius: 6px;
+        margin: 10px 0;
+    }
+    
+    .success-message {
+        background: #d4edda;
+        color: #155724;
+        padding: 15px;
+        border-radius: 6px;
+        margin: 10px 0;
+    }
+    
+    .map-iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+    }
+    
+    .load-more-container {
+        text-align: center;
+        margin: 20px 0;
+    }
+    
+    .load-more-btn {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background-color 0.2s ease;
+    }
+    
+    .load-more-btn:hover {
+        background: #0056b3;
+    }
+    
+    .load-more-btn:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+    }
+    
+    .routes-stats {
+        background: #e9ecef;
+        padding: 10px 15px;
+        border-radius: 6px;
+        margin-bottom: 15px;
+        font-size: 14px;
     }
 </style>
 {% endblock %}
@@ -80,168 +151,337 @@
 {% block content %}
 <div class="container">
     <div class="map-info">
-        <h2>D3.js 한국 지도 시각화</h2>
-        <p>이 페이지는 D3.js를 사용하여 한국 지도에 버스 정류장과 노선 정보를 시각화합니다.</p>
+        <h2>🚌 Folium 버스 노선 지도</h2>
+        <p>이 페이지는 Folium을 사용하여 버스 노선과 정거장 정보를 시각화합니다.</p>
+        {% if error_message %}
+        <div class="error-message">
+            <strong>오류:</strong> {{ error_message }}
+        </div>
+        {% endif %}
     </div>
     
     <div class="map-controls">
         <button id="loadMap" class="active">지도 로드</button>
-        <button id="addStops">정류장 표시</button>
-        <button id="addRoutes">노선 표시</button>
-        <button id="enableZoom">줌 활성화</button>
-        <button id="resetMap">지도 리셋</button>
+        <button id="regenerateMap">지도 재생성</button>
+        <button id="refreshRoutes">노선 정보 새로고침</button>
+        <button id="downloadMap">지도 다운로드</button>
     </div>
     
-    <div id="d3-map" class="map-container"></div>
+    <div id="folium-map" class="map-container">
+        {% if has_map %}
+            <iframe id="map-iframe" class="map-iframe" src="/api/bus-map"></iframe>
+        {% else %}
+            <div class="loading">
+                <h4>지도를 생성 중입니다...</h4>
+                <p>잠시만 기다려주세요.</p>
+            </div>
+        {% endif %}
+    </div>
     
     <div class="data-panel">
-        <h3>선택된 정보</h3>
-        <div id="selected-info">
-            <p>지역이나 정류장을 클릭하여 정보를 확인하세요.</p>
+        <h3>📊 노선 정보</h3>
+        <div id="routes-info">
+            {% if routes_summary %}
+                <div class="routes-stats">
+                    <strong>총 노선 수:</strong> {{ routes_summary|length }}개 | 
+                    <span id="displayed-count">12</span>개 표시 중
+                </div>
+                <div id="routes-grid" class="routes-grid">
+                    {% for route in routes_summary[:12] %}
+                    <div class="route-card">
+                        <h5>노선 {{ route.route_no }}번</h5>
+                        <p><strong>노선 ID:</strong> {{ route.route_id }}</p>
+                        <p><strong>정거장 수:</strong> {{ route.node_count }}개</p>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if routes_summary|length > 12 %}
+                <div class="load-more-container">
+                    <button id="load-more-routes" class="load-more-btn">
+                        더보기 ({{ routes_summary|length - 12 }}개 더 있음)
+                    </button>
+                </div>
+                {% endif %}
+            {% else %}
+                <p>노선 정보를 불러오는 중...</p>
+            {% endif %}
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/d3-map.js') }}"></script>
+{% if has_map %}
+<script>window.pageData = {hasMap: true};</script>
+{% else %}
+<script>window.pageData = {hasMap: false};</script>
+{% endif %}
 <script>
-    // D3.js 지도 인스턴스 생성
-    let d3Map;
+    // 전역 변수
+    var allRoutes = [];
+    var displayedRoutesCount = 12;
+    var routesPerPage = 12;
     
-    // 페이지 로드 시 지도 초기화
     document.addEventListener('DOMContentLoaded', function() {
-        // 지도 컨테이너 크기 설정
-        const container = document.getElementById('d3-map');
-        const containerWidth = container.offsetWidth;
-        const containerHeight = 600;
-        
-        // D3.js 지도 생성
-        d3Map = new D3Map('d3-map', {
-            width: containerWidth,
-            height: containerHeight,
-            center: [127.5, 36.5], // 한국 중심 좌표
-            scale: 4000
-        });
-        
-        // 기본 지도 로드
-        d3Map.loadKoreaMap();
-        
-        // 이벤트 리스너 설정
         setupEventListeners();
+        setupLoadMoreListener();
+        
+        // 초기 노선 데이터 로드
+        loadInitialRoutes();
+        
+        // 페이지 로드 시 지도가 없으면 생성 시도
+        if (!window.pageData.hasMap) {
+            setTimeout(function() {
+                regenerateMap();
+            }, 1000);
+        }
     });
     
-    // 이벤트 리스너 설정
+    function loadInitialRoutes() {
+        // 서버에서 전달된 초기 노선 데이터가 있는지 확인
+        fetch('/api/routes-summary')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    allRoutes = data.routes;
+                    console.log('초기 노선 데이터 로드 완료:', allRoutes.length + '개');
+                }
+            })
+            .catch(error => {
+                console.error('초기 노선 데이터 로드 오류:', error);
+            });
+    }
+    
     function setupEventListeners() {
         // 지도 로드 버튼
         document.getElementById('loadMap').addEventListener('click', function() {
-            d3Map.loadKoreaMap();
+            loadMap();
             updateButtonState(this);
         });
         
-        // 정류장 표시 버튼
-        document.getElementById('addStops').addEventListener('click', function() {
-            fetch('/api/bus-stops')
-                .then(response => response.json())
-                .then(data => {
-                    d3Map.addBusStops(data);
-                    updateButtonState(this);
-                })
-                .catch(error => {
-                    console.error('정류장 데이터 로드 실패:', error);
-                    // 폴백 데이터 사용
-                    const sampleStops = [
-                        { name: "수원시청", lat: 37.2636, lng: 127.0286, routes: 15 },
-                        { name: "수원역", lat: 37.2659, lng: 127.0001, routes: 23 },
-                        { name: "수원고등학교", lat: 37.2800, lng: 127.0150, routes: 8 }
-                    ];
-                    d3Map.addBusStops(sampleStops);
-                    updateButtonState(this);
-                });
-        });
-        
-        // 노선 표시 버튼
-        document.getElementById('addRoutes').addEventListener('click', function() {
-            fetch('/api/bus-routes')
-                .then(response => response.json())
-                .then(data => {
-                    d3Map.addBusRoutes(data);
-                    updateButtonState(this);
-                })
-                .catch(error => {
-                    console.error('노선 데이터 로드 실패:', error);
-                    // 폴백 데이터 사용
-                    const sampleRoutes = [
-                        {
-                            name: "수원시청 ↔ 수원역",
-                            coordinates: [[127.0286, 37.2636], [127.0001, 37.2659]],
-                            stops: 8
-                        },
-                        {
-                            name: "수원고등학교 ↔ 수원시민공원",
-                            coordinates: [[127.0150, 37.2800], [127.0200, 37.2750]],
-                            stops: 5
-                        }
-                    ];
-                    d3Map.addBusRoutes(sampleRoutes);
-                    updateButtonState(this);
-                });
-        });
-        
-        // 줌 활성화 버튼
-        document.getElementById('enableZoom').addEventListener('click', function() {
-            d3Map.enableZoom();
+        // 지도 재생성 버튼
+        document.getElementById('regenerateMap').addEventListener('click', function() {
+            regenerateMap();
             updateButtonState(this);
         });
         
-        // 지도 리셋 버튼
-        document.getElementById('resetMap').addEventListener('click', function() {
-            d3Map.reset();
-            d3Map.loadKoreaMap();
+        // 노선 정보 새로고침 버튼
+        document.getElementById('refreshRoutes').addEventListener('click', function() {
+            refreshRoutesInfo();
             updateButtonState(this);
         });
         
-        // 지역 선택 이벤트
-        document.getElementById('d3-map').addEventListener('regionSelected', function(event) {
-            const region = event.detail;
-            displaySelectedInfo('지역', region.properties.CTP_KOR_NM);
-        });
-        
-        // 정류장 선택 이벤트
-        document.getElementById('d3-map').addEventListener('busStopSelected', function(event) {
-            const stop = event.detail;
-            displaySelectedInfo('정류장', `${stop.name} (${stop.routes}개 노선)`);
+        // 지도 다운로드 버튼
+        document.getElementById('downloadMap').addEventListener('click', function() {
+            downloadMap();
+            updateButtonState(this);
         });
     }
     
-    // 버튼 상태 업데이트
+    function setupLoadMoreListener() {
+        // DOM이 변경될 수 있으므로 이벤트 위임 사용
+        document.addEventListener('click', function(event) {
+            if (event.target && event.target.id === 'load-more-routes') {
+                event.preventDefault();
+                loadMoreRoutes();
+            }
+        });
+    }
+    
+    function loadMoreRoutes() {
+        console.log('더보기 버튼 클릭됨. 현재 표시된 노선:', displayedRoutesCount, '전체 노선:', allRoutes.length);
+        
+        if (allRoutes.length === 0) {
+            showMessage('노선 데이터를 불러오는 중입니다...', 'success');
+            // 전체 노선 데이터가 없으면 API에서 가져오기
+            fetch('/api/routes-summary')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        allRoutes = data.routes;
+                        console.log('API에서 노선 데이터 로드:', allRoutes.length + '개');
+                        displayMoreRoutes();
+                    } else {
+                        showMessage('노선 데이터 로드에 실패했습니다.', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('노선 데이터 로드 오류:', error);
+                    showMessage('노선 데이터 로드 중 오류가 발생했습니다.', 'error');
+                });
+        } else {
+            displayMoreRoutes();
+        }
+    }
+    
+    function displayMoreRoutes() {
+        var routesGrid = document.getElementById('routes-grid');
+        var loadMoreBtn = document.getElementById('load-more-routes');
+        var displayedCountSpan = document.getElementById('displayed-count');
+        
+        if (!routesGrid || !loadMoreBtn || !displayedCountSpan) {
+            console.error('필요한 DOM 요소를 찾을 수 없습니다.');
+            return;
+        }
+        
+        var nextCount = Math.min(displayedRoutesCount + routesPerPage, allRoutes.length);
+        var routesToAdd = allRoutes.slice(displayedRoutesCount, nextCount);
+        
+        console.log('추가할 노선:', routesToAdd.length + '개 (', displayedRoutesCount, '부터', nextCount, '까지)');
+        
+        // 새로운 노선 카드들 추가
+        routesToAdd.forEach(function(route) {
+            var routeCard = document.createElement('div');
+            routeCard.className = 'route-card';
+            routeCard.innerHTML = 
+                '<h5>노선 ' + route.route_no + '번</h5>' +
+                '<p><strong>노선 ID:</strong> ' + route.route_id + '</p>' +
+                '<p><strong>정거장 수:</strong> ' + route.node_count + '개</p>';
+            routesGrid.appendChild(routeCard);
+        });
+        
+        displayedRoutesCount = nextCount;
+        displayedCountSpan.textContent = displayedRoutesCount;
+        
+        // 모든 노선을 표시했으면 더보기 버튼 숨기기
+        if (displayedRoutesCount >= allRoutes.length) {
+            loadMoreBtn.style.display = 'none';
+            showMessage('모든 ' + allRoutes.length + '개 노선을 표시했습니다!', 'success');
+        } else {
+            var remainingCount = allRoutes.length - displayedRoutesCount;
+            loadMoreBtn.textContent = '더보기 (' + remainingCount + '개 더 있음)';
+        }
+    }
+    
+    function loadMap() {
+        const mapContainer = document.getElementById('folium-map');
+        const iframe = document.getElementById('map-iframe');
+        
+        if (iframe) {
+            iframe.src = '/api/bus-map?' + new Date().getTime(); // 캐시 방지
+        } else {
+            mapContainer.innerHTML = '<iframe id="map-iframe" class="map-iframe" src="/api/bus-map"></iframe>';
+        }
+        
+        showMessage('지도를 로드했습니다.', 'success');
+    }
+    
+    function regenerateMap() {
+        const mapContainer = document.getElementById('folium-map');
+        mapContainer.innerHTML = '<div class="loading"><h4>지도를 재생성 중입니다...</h4><p>잠시만 기다려주세요.</p></div>';
+        
+        fetch('/api/regenerate-bus-map')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    mapContainer.innerHTML = '<iframe id="map-iframe" class="map-iframe" src="/api/bus-map?' + new Date().getTime() + '"></iframe>';
+                    showMessage(data.message, 'success');
+                } else {
+                    mapContainer.innerHTML = '<div class="error-message">지도 생성에 실패했습니다: ' + data.error + '</div>';
+                    showMessage('지도 재생성에 실패했습니다.', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('지도 재생성 오류:', error);
+                mapContainer.innerHTML = '<div class="error-message">지도 생성 중 오류가 발생했습니다.</div>';
+                showMessage('지도 재생성 중 오류가 발생했습니다.', 'error');
+            });
+    }
+    
+    function refreshRoutesInfo() {
+        var routesInfo = document.getElementById('routes-info');
+        routesInfo.innerHTML = '<p>노선 정보를 불러오는 중...</p>';
+        
+        fetch('/api/routes-summary')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    allRoutes = data.routes;
+                    displayedRoutesCount = 12;
+                    
+                    var html = '<div class="routes-stats">' +
+                               '<strong>총 노선 수:</strong> ' + data.total_routes + '개 | ' +
+                               '<span id="displayed-count">12</span>개 표시 중' +
+                               '</div>' +
+                               '<div id="routes-grid" class="routes-grid">';
+                    
+                    var routesToShow = data.routes.slice(0, 12);
+                    routesToShow.forEach(function(route) {
+                        html += '<div class="route-card">' +
+                                '<h5>노선 ' + route.route_no + '번</h5>' +
+                                '<p><strong>노선 ID:</strong> ' + route.route_id + '</p>' +
+                                '<p><strong>정거장 수:</strong> ' + route.node_count + '개</p>' +
+                                '</div>';
+                    });
+                    
+                    html += '</div>';
+                    
+                    if (data.routes.length > 12) {
+                        var remainingCount = data.routes.length - 12;
+                        html += '<div class="load-more-container">' +
+                                '<button id="load-more-routes" class="load-more-btn">' +
+                                '더보기 (' + remainingCount + '개 더 있음)' +
+                                '</button>' +
+                                '</div>';
+                    }
+                    
+                    routesInfo.innerHTML = html;
+                    
+                    showMessage('노선 정보를 새로고침했습니다.', 'success');
+                } else {
+                    routesInfo.innerHTML = '<div class="error-message">노선 정보 로드 실패: ' + data.error + '</div>';
+                    showMessage('노선 정보 새로고침에 실패했습니다.', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('노선 정보 로드 오류:', error);
+                routesInfo.innerHTML = '<div class="error-message">노선 정보 로드 중 오류가 발생했습니다.</div>';
+                showMessage('노선 정보 로드 중 오류가 발생했습니다.', 'error');
+            });
+    }
+    
+    function downloadMap() {
+        const link = document.createElement('a');
+        link.href = '/api/bus-map';
+        link.download = 'bus_routes_map.html';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showMessage('지도 파일 다운로드를 시작했습니다.', 'success');
+    }
+    
     function updateButtonState(activeButton) {
-        // 모든 버튼에서 active 클래스 제거
         document.querySelectorAll('.map-controls button').forEach(btn => {
             btn.classList.remove('active');
         });
-        
-        // 클릭된 버튼에 active 클래스 추가
         activeButton.classList.add('active');
     }
     
-    // 선택된 정보 표시
-    function displaySelectedInfo(type, info) {
-        const infoContainer = document.getElementById('selected-info');
-        infoContainer.innerHTML = `
-            <h4>선택된 ${type}</h4>
-            <p><strong>${info}</strong></p>
-            <p>선택 시간: ${new Date().toLocaleString()}</p>
-        `;
+    function showMessage(message, type) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = type === 'success' ? 'success-message' : 'error-message';
+        messageDiv.innerHTML = '<strong>' + message + '</strong>';
+        
+        const container = document.querySelector('.container');
+        const mapInfo = container.querySelector('.map-info');
+        
+        // 기존 메시지 제거
+        const existingMessages = container.querySelectorAll('.success-message, .error-message');
+        existingMessages.forEach(msg => {
+            if (!msg.closest('.data-panel')) {
+                msg.remove();
+            }
+        });
+        
+        mapInfo.appendChild(messageDiv);
+        
+        // 3초 후 메시지 제거
+        setTimeout(() => {
+            if (messageDiv.parentNode) {
+                messageDiv.parentNode.removeChild(messageDiv);
+            }
+        }, 3000);
     }
-    
-    // 창 크기 변경 시 지도 크기 조정
-    window.addEventListener('resize', function() {
-        if (d3Map) {
-            const container = document.getElementById('d3-map');
-            const containerWidth = container.offsetWidth;
-            d3Map.resize(containerWidth, 600);
-        }
-    });
 </script>
 {% endblock %}

@@ -34,14 +34,18 @@
 
 <!-- Chart.js 스크립트 -->
 <script>
+  // Jinja2 템플릿 변수를 JavaScript 변수로 안전하게 변환
+  const chartLabels = JSON.parse('{{ chart_labels | safe }}');
+  const chartValues = JSON.parse('{{ chart_values | safe }}');
+  
   const ctx = document.getElementById('lineChart').getContext('2d');
   const lineChart = new Chart(ctx, {
       type: 'line',
       data: {
-          labels: {{ chart_labels | safe }},
+          labels: chartLabels,
           datasets: [{
               label: '평균 이용객수',
-              data: {{ chart_values | safe }},
+              data: chartValues,
               borderColor: 'rgba(75, 192, 192, 1)',
               backgroundColor: 'rgba(75, 192, 192, 0.2)',
               fill: true,
