@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{{ selected }} 노선 분석</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .back-button {
+            display: inline-block;
+            margin-bottom: 20px;
+            text-decoration: none;
+            background-color: #007BFF;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+        }
+        h2 {
+            margin-bottom: 10px;
+        }
+        .chart-container {
+            max-width: 500px;
+            margin: 30px auto;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 30px;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <a href="/" class="back-button">← 다른 노선 선택하기</a>
+
+    <h2>{{ selected }} 노선 2024년도 월 평균 상위 5개 시간대</h2>
+
+    <div class="chart-container">
+        <canvas id="pieChart"></canvas>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                {% for col in table_data[0].keys() %}
+                <th>{{ col }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in table_data %}
+            <tr>
+                {% for value in row.values() %}
+                <td>{{ value }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script>
+        const ctx = document.getElementById('pieChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: {{ pie_labels|tojson }},
+                datasets: [{
+                    data: {{ pie_values|tojson }},
+                    backgroundColor: [
+                        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'
+                    ],
+                    borderColor: 'white',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                let value = context.raw || 0;
+                                return `${label}: ${value.toLocaleString()}명`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
