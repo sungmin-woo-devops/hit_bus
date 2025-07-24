@@ -1,10 +1,12 @@
-from flask import Flask, render_template, jsonify, request, send_file
+from flask import Flask, render_template, jsonify, request, send_file, flash, redirect, url_for
+from forms import SimpleRegistrationForm
 import json
 import os
 import pandas as pd
 from map.map import BusRouteMapper, create_bus_route_map, get_routes_data_summary
 
 app = Flask(__name__)
+app.secret_key = 'super-secret-key'  # CSRF 보호를 위해 시크릿 키를 설정합니다.
 
 @app.route('/')
 def home():
@@ -141,9 +143,22 @@ def get_team4():
                              has_map=False,
                              error_message=str(e))
 
-@app.route('/team5')
+@app.route('/team5', methods=['GET', 'POST'])
 def get_team5():
-    return render_template('team5.html')
+    """Team5 회원가입 페이지"""
+    form = SimpleRegistrationForm()
+    
+    if form.validate_on_submit():
+        try:
+            # TODO: 데이터베이스 연동 필요
+            # user_id = db.create_user(form.full_name.data, form.email.data)
+            # 임시로 성공 메시지만 표시
+            flash(f'{form.full_name.data}님, 회원가입이 완료되었습니다!', 'success')
+            return redirect(url_for('get_team5'))
+        except ValueError as e:
+            flash(str(e), 'error')
+    
+    return render_template('team5.html', form=form)
 
 # D3.js 지도 API 엔드포인트
 @app.route('/api/bus-stops')
