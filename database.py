@@ -64,3 +64,32 @@ class UserDatabase:
                 return cursor.fetchall()
         finally:
             connection.close()
+    
+    def get_user_by_username(self, username):
+        """사용자명으로 사용자 조회"""
+        connection = self.get_connection()
+        try:
+            with connection.cursor() as cursor:
+                sql = "SELECT * FROM test.members WHERE username = %s"
+                cursor.execute(sql, (username,))
+                return cursor.fetchone()
+        finally:
+            connection.close()
+
+    def authenticate_user(self, username, password):
+        """사용자 인증"""
+        user = self.get_user_by_username(username)
+        if user and bcrypt.checkpw(password.encode('utf-8'), user['password_hash'].encode('utf-8')):
+            return user
+        return None
+
+    def get_user_by_id(self, user_id):
+        """ID로 사용자 조회"""
+        connection = self.get_connection()
+        try:
+            with connection.cursor() as cursor:
+                sql = "SELECT * FROM test.members WHERE id = %s"
+                cursor.execute(sql, (user_id,))
+                return cursor.fetchone()
+        finally:
+            connection.close()

@@ -1,5 +1,6 @@
 from flask import Flask, render_template, jsonify, request, send_file, flash, redirect, url_for
 from forms import SimpleRegistrationForm
+from database import UserDatabase
 import json
 import os
 import pandas as pd
@@ -7,6 +8,20 @@ from map.map import BusRouteMapper, create_bus_route_map, get_routes_data_summar
 
 app = Flask(__name__)
 app.secret_key = 'super-secret-key'  # CSRF 보호를 위해 시크릿 키를 설정합니다.
+
+# 데이터베이스 초기화
+db = UserDatabase(
+    host='localhost',
+    user='root',
+    password='1111',  # 실제 비밀번호로 변경
+    database='test'
+)
+
+@app.route('/success/<int:user_id>')
+def success(user_id):
+    """회원가입 완료 페이지"""
+    # 실제로는 user_id로 사용자 정보를 조회하여 보여줄 수 있습니다.
+    return render_template('success.html', user_id=user_id)
 
 @app.route('/')
 def home():
@@ -150,11 +165,16 @@ def get_team5():
     
     if form.validate_on_submit():
         try:
-            # TODO: 데이터베이스 연동 필요
-            # user_id = db.create_user(form.full_name.data, form.email.data)
-            # 임시로 성공 메시지만 표시
+            user_id = db.create_user(
+                username=form.username.data,
+                email=form.email.data,
+                password=form.password.data,
+                full_name=form.full_name.data,
+                phone=form.phone.data if form.phone.data else None,
+                birth_date=form.birth_date.data if form.birth_date.data else None
+            )
             flash(f'{form.full_name.data}님, 회원가입이 완료되었습니다!', 'success')
-            return redirect(url_for('get_team5'))
+            return redirect(url_for('success', user_id=user_id))
         except ValueError as e:
             flash(str(e), 'error')
     
