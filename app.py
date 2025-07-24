@@ -1,5 +1,5 @@
-from flask import Flask, render_template, jsonify, request, send_file, flash, redirect, url_for
-from forms import SimpleRegistrationForm
+from flask import Flask, render_template, jsonify, request, send_file, flash, redirect, url_for, session, g
+from forms import SimpleRegistrationForm, LoginForm
 from database import UserDatabase
 import json
 import os
@@ -17,11 +17,40 @@ db = UserDatabase(
     database='test'
 )
 
-@app.route('/success/<int:user_id>')
-def success(user_id):
-    """회원가입 완료 페이지"""
-    # 실제로는 user_id로 사용자 정보를 조회하여 보여줄 수 있습니다.
-    return render_template('success.html', user_id=user_id)
+@app.before_request
+def load_logged_in_user():
+    """모든 요청 전에 로그인된 사용자 정보를 로드"""
+    user_id = session.get('user_id')
+    
+    if user_id is None:
+        g.user = None
+    else:
+        g.user = db.get_user_by_id(user_id)
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """로그인 페이지"""
+    form = LoginForm()
+    
+    if form.validate_on_submit():
+        user = db.authenticate_user(form.username.data, form.password.data)
+        if user:
+            session.clear()
+            session['user_id'] = user['id']
+            flash(f'{user["full_name"]}님, 환영합니다!', 'success')
+            return redirect(url_for('home'))
+        else:
+            flash('사용자명 또는 비밀번호가 올바르지 않습니다.', 'error')
+    
+    return render_template('login.html', form=form)
+
+@app.route('/logout')
+def logout():
+    """로그아웃"""
+    if g.user:
+        flash(f'{g.user["full_name"]}님, 안전하게 로그아웃되었습니다.', 'info')
+    session.clear()
+    return redirect(url_for('home'))
 
 @app.route('/')
 def home():
@@ -173,8 +202,11 @@ def get_team5():
                 phone=form.phone.data if form.phone.data else None,
                 birth_date=form.birth_date.data if form.birth_date.data else None
             )
-            flash(f'{form.full_name.data}님, 회원가입이 완료되었습니다!', 'success')
-            return redirect(url_for('success', user_id=user_id))
+            # 회원가입 후 자동 로그인
+            session.clear()
+            session['user_id'] = user_id
+            flash(f'{form.full_name.data}님, 회원가입이 완료되었습니다! 자동으로 로그인되었습니다.', 'success')
+            return redirect(url_for('home'))
         except ValueError as e:
             flash(str(e), 'error')
     

@@ -40,3 +40,9 @@ class SimpleRegistrationForm(FlaskForm):
     ])
     
     submit = SubmitField('가입하기')
+
+
+class LoginForm(FlaskForm):
+    username = StringField('사용자명', validators=[DataRequired(message="사용자명을 입력해주세요.")])
+    password = PasswordField('비밀번호', validators=[DataRequired(message="비밀번호를 입력해주세요.")])
+    submit = SubmitField('로그인')
