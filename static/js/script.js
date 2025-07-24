@@ -27,7 +27,7 @@ window.addEventListener('scroll', function() {
 
 // 폼 제출 처리 (연락처 페이지)
 document.addEventListener('DOMContentLoaded', function() {
-    const contactForm = document.querySelector('form');
+    const contactForm = document.getElementById('contact-form');
     if (contactForm) {
         contactForm.addEventListener('submit', function(e) {
             e.preventDefault();

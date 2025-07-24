@@ -1,6 +1,7 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 import json
 import os
+import pandas as pd
 
 app = Flask(__name__)
 
@@ -14,11 +15,105 @@ def get_team1():
 
 @app.route('/team2')
 def get_team2():
-    return render_template('team2.html')
+    try:
+        # 데이터 파일 경로
+        data_path = os.path.join(os.path.dirname(__file__), 'data', 'bus_data.csv')
+        
+        # CSV 파일 읽기
+        df = pd.read_csv(data_path)
+        
+        # 상위 4개 노선 추출
+        top_routes = df['노선'].value_counts().head(4).index.tolist()
+        
+        # 선택된 노선 (기본값: 첫 번째 노선)
+        selected_route = request.args.get('route') or top_routes[0]
+        
+        # 선택된 노선 데이터 필터링
+        filtered_df = df[df['노선'] == selected_route]
+        
+        # 테이블 HTML 생성
+        table_html = filtered_df.head(20).to_html(classes='team2-table table-bordered table-sm', index=False)
+        
+        # 시간대별 평균 이용객수 계산
+        filtered_df['시작시'] = filtered_df['시간'].str.extract(r'(\d+)').astype(int)
+        grouped = filtered_df.groupby('시작시')['이용객수'].mean().sort_index()
+        
+        # Chart.js에 넘길 JSON 데이터
+        chart_labels = list(grouped.index)
+        chart_values = list(grouped.values)
+        
+        return render_template('team2.html',
+                               table=table_html,
+                               routes=top_routes,
+                               selected_route=selected_route,
+                               chart_labels=json.dumps(chart_labels),
+                               chart_values=json.dumps(chart_values))
+    except Exception as e:
+        # 에러 발생 시 기본 템플릿 반환
+        return render_template('team2.html',
+                               table="<p>데이터를 불러오는 중 오류가 발생했습니다.</p>",
+                               routes=[],
+                               selected_route="",
+                               chart_labels=json.dumps([]),
+                               chart_values=json.dumps([]))
 
-@app.route('/team3')
+@app.route('/team3', methods=['GET', 'POST'])
 def get_team3():
-    return render_template('team3.html')
+    try:
+        # 데이터 파일 경로
+        data_path = os.path.join(os.path.dirname(__file__), 'data', 'df_suwon_flask.csv')
+        
+        # CSV 파일 읽기
+        df = pd.read_csv(data_path)
+        
+        # GET 요청: 노선 선택 페이지
+        if request.method == 'GET':
+            routes = df['노선'].unique().tolist()
+            return render_template('team3.html', routes=routes, selected=None)
+        
+        # POST 요청: 선택된 노선 분석
+        else:
+            selected = request.form.get('route')
+            routes = df['노선'].unique().tolist()
+            if not selected:
+                return render_template(
+                    'team3.html',
+                    routes=routes,
+                    selected=None,
+                    error_msg='노선을 선택해주세요.',
+                    labels=json.dumps([]),
+                    chart_data=json.dumps([])
+                )
+            
+            # 선택된 노선 데이터 필터링
+            filtered_df = df[df['노선'] == selected]
+            temp = filtered_df.groupby(['일시', '월', '시간범위'])['이용객수'].sum().reset_index()
+            
+            # Chart.js 형식으로 데이터 준비
+            chart_data = temp.groupby('월').apply(
+                lambda g: {
+                    'label': f"{g.name}월",
+                    'data': g.sort_values('시간범위')['이용객수'].tolist()
+                }
+            ).tolist()
+            labels = sorted(temp['시간범위'].unique())
+            
+            return render_template(
+                'team3.html',
+                selected=selected,
+                routes=routes,
+                labels=json.dumps(labels, ensure_ascii=False),
+                chart_data=json.dumps(chart_data, ensure_ascii=False)
+            )
+            
+    except Exception as e:
+        # 에러 발생 시 기본 템플릿 반환
+        return render_template('team3.html',
+                               routes=[],
+                               selected=None,
+                               error_msg='서버 오류: ' + str(e),
+                               labels=json.dumps([]),
+                               chart_data=json.dumps([]))
 
 @app.route('/team4')
 def get_team4():

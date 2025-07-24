@@ -1,33 +1,77 @@
 {% extends "base.html" %}
 
-{% block title %}소개 - MyWebsite{% endblock %}
+{% block title %}노선별 월별 분석 - Team3{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div class="container">
-        <h1>회사 소개</h1>
-        <p>우리의 이야기를 들어보세요</p>
-    </div>
-</div>
+<!-- Chart.js CDN 추가 -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<div class="content-section">
-    <div class="container">
-        <div class="about-content">
-            <h2>우리의 미션</h2>
-            <p>우리는 고객에게 최고의 서비스를 제공하기 위해 노력합니다. 혁신적인 기술과 창의적인 아이디어로 더 나은 미래를 만들어갑니다.</p>
-            
-            <h2>우리의 비전</h2>
-            <p>업계 최고의 기업이 되어 고객과 사회에 가치를 창출하는 것이 우리의 비전입니다.</p>
-            
-            <h2>우리의 가치</h2>
-            <ul>
-                <li>고객 중심</li>
-                <li>품질 우선</li>
-                <li>지속적 혁신</li>
-                <li>팀워크</li>
-                <li>사회적 책임</li>
-            </ul>
-        </div>
+<div class="team3-container">
+    {% if error_msg %}
+      <div class="alert alert-danger" style="color:#b30000; background:#ffeaea; border:1px solid #b30000; padding:1em; margin-bottom:1em; border-radius:6px;">{{ error_msg }}</div>
+    {% endif %}
+    {% if not selected %}
+    <!-- 노선 선택 폼 -->
+    <div class="team3-form">
+        <h2>2024년 수원시 노선을 선택하세요</h2>
+        <form method="POST" action="/team3">
+            <select name="route" class="team3-select" required>
+                {% for route in routes %}
+                    <option value="{{ route }}">{{ route }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="team3-button">조회</button>
+        </form>
     </div>
+    {% else %}
+    <!-- 차트 표시 -->
+    <div class="team3-chart-container">
+        <h2>{{ selected }} 노선 이용객수 그래프</h2>
+        <canvas id="myChart" class="team3-canvas" width="800" height="400"></canvas>
+    </div>
+
+    <!-- Chart.js 스크립트 -->
+    <script>
+        // Jinja2 템플릿 변수를 JavaScript 변수로 안전하게 변환
+        const chartLabels = JSON.parse('{{ labels | safe }}');
+        const chartData = JSON.parse('{{ chart_data | safe }}');
+        
+        const datasets = chartData.map(set => ({
+            label: set.label,
+            data: set.data,
+            fill: false,
+            borderColor: `hsl(${Math.random() * 360}, 70%, 50%)`,
+            tension: 0.1
+        }));
+
+        const config = {
+            type: 'line',
+            data: {
+                labels: chartLabels,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: '시간범위'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: '이용객수'
+                        },
+                        beginAtZero: true
+                    }
+                }
+            }
+        };
+
+        new Chart(document.getElementById('myChart'), config);
+    </script>
+    {% endif %}
 </div>
 {% endblock %}

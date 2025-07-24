@@ -1,33 +1,72 @@
 {% extends "base.html" %}
 
-{% block title %}소개 - MyWebsite{% endblock %}
+{% block title %}노선별 교통량 분석 - Team2{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div class="container">
-        <h1>회사 소개</h1>
-        <p>우리의 이야기를 들어보세요</p>
-    </div>
+<!-- Chart.js CDN 추가 -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- 사이드바 -->
+<div class="team2-sidebar">
+  <h5>노선 선택</h5>
+  {% for route in routes %}
+    <a href="/team2?route={{ route }}" class="route-link {% if route == selected_route %}fw-bold{% endif %}">
+      {{ route }}
+    </a>
+  {% endfor %}
 </div>
 
-<div class="content-section">
-    <div class="container">
-        <div class="about-content">
-            <h2>우리의 미션</h2>
-            <p>우리는 고객에게 최고의 서비스를 제공하기 위해 노력합니다. 혁신적인 기술과 창의적인 아이디어로 더 나은 미래를 만들어갑니다.</p>
-            
-            <h2>우리의 비전</h2>
-            <p>업계 최고의 기업이 되어 고객과 사회에 가치를 창출하는 것이 우리의 비전입니다.</p>
-            
-            <h2>우리의 가치</h2>
-            <ul>
-                <li>고객 중심</li>
-                <li>품질 우선</li>
-                <li>지속적 혁신</li>
-                <li>팀워크</li>
-                <li>사회적 책임</li>
-            </ul>
-        </div>
-    </div>
+<!-- 메인 콘텐츠 -->
+<div class="team2-main">
+  <h2>{{ selected_route }} 노선 - 상위 20개 데이터</h2>
+
+  <!-- 📈 그래프 영역 -->
+  <div class="chart-container">
+    <h5>시간대별 평균 이용객수</h5>
+    <canvas id="lineChart" height="100"></canvas>
+  </div>
+
+  <!-- 표 -->
+  <div class="table-responsive">
+    {{ table | safe }}
+  </div>
 </div>
+
+<!-- Chart.js 스크립트 -->
+<script>
+  const ctx = document.getElementById('lineChart').getContext('2d');
+  const lineChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+          labels: {{ chart_labels | safe }},
+          datasets: [{
+              label: '평균 이용객수',
+              data: {{ chart_values | safe }},
+              borderColor: 'rgba(75, 192, 192, 1)',
+              backgroundColor: 'rgba(75, 192, 192, 0.2)',
+              fill: true,
+              tension: 0.3,
+              pointRadius: 4
+          }]
+      },
+      options: {
+          responsive: true,
+          scales: {
+              x: {
+                  title: {
+                      display: true,
+                      text: '시작 시각 (시)'
+                  }
+              },
+              y: {
+                  title: {
+                      display: true,
+                      text: '평균 이용객수'
+                  },
+                  beginAtZero: true
+              }
+          }
+      }
+  });
+</script>
 {% endblock %}

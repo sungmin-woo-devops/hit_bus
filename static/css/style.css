@@ -5,6 +5,195 @@
     box-sizing: border-box;
 }
 
+/* Team2 노선별 교통량 페이지 스타일 */
+.team2-sidebar {
+    min-width: 200px;
+    max-width: 220px;
+    height: 100vh;
+    position: fixed;
+    top: 70px; /* 네비게이션 바 높이만큼 아래로 */
+    left: 0;
+    background-color: #f8f9fa;
+    padding: 2rem 1rem;
+    border-right: 1px solid #ccc;
+    overflow-y: auto;
+}
+
+.team2-main {
+    margin-left: 220px;
+    padding: 2rem;
+    margin-top: 70px; /* 네비게이션 바 높이만큼 아래로 */
+}
+
+.route-link {
+    display: block;
+    margin-bottom: 10px;
+    color: #0d6efd;
+    text-decoration: none;
+    font-weight: normal;
+    padding: 8px 10px;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+}
+
+.route-link:hover {
+    text-decoration: underline;
+    background-color: #e9ecef;
+}
+
+.route-link.fw-bold {
+    background-color: #4CAF50;
+    color: white;
+    font-weight: bold;
+}
+
+.route-link.fw-bold:hover {
+    background-color: #45a049;
+    text-decoration: none;
+}
+
+.team2-sidebar h5 {
+    font-size: 18px;
+    margin-bottom: 1rem;
+    color: #333;
+}
+
+/* Team2 테이블 스타일 */
+.team2-table {
+    width: 100%;
+    margin-bottom: 20px;
+    border-collapse: collapse;
+}
+
+.team2-table th, .team2-table td {
+    padding: 10px;
+    border: 1px solid #ccc;
+    text-align: center;
+}
+
+.team2-table thead {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+
+.team2-table tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.team2-table tbody tr:hover {
+    background-color: #f0f0f0;
+}
+
+/* Team2 차트 컨테이너 */
+.chart-container {
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.chart-container h5 {
+    margin-bottom: 1rem;
+    color: #333;
+}
+
+/* 반응형 디자인 */
+@media screen and (max-width: 768px) {
+    .team2-sidebar {
+        position: static;
+        width: 100%;
+        height: auto;
+        margin-top: 70px;
+    }
+    
+    .team2-main {
+        margin-left: 0;
+        padding: 1rem;
+    }
+}
+
+/* Team3 노선별 월별 분석 페이지 스타일 */
+.team3-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+    margin-top: 70px;
+}
+
+.team3-form {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.team3-form h2 {
+    color: #2c3e50;
+    margin-bottom: 1.5rem;
+}
+
+.team3-select {
+    padding: 12px;
+    margin-right: 1rem;
+    font-size: 16px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    min-width: 200px;
+}
+
+.team3-button {
+    padding: 12px 24px;
+    font-size: 16px;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.team3-button:hover {
+    background-color: #2980b9;
+}
+
+.team3-chart-container {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-top: 2rem;
+}
+
+.team3-chart-container h2 {
+    color: #2c3e50;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.team3-canvas {
+    max-width: 100%;
+    height: auto;
+}
+
+@media screen and (max-width: 768px) {
+    .team3-container {
+        padding: 1rem;
+    }
+    
+    .team3-form {
+        padding: 1rem;
+    }
+    
+    .team3-select {
+        margin-right: 0;
+        margin-bottom: 1rem;
+        width: 100%;
+    }
+}
+
 body {
     font-family: 'Arial', sans-serif;
     line-height: 1.6;
