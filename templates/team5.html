@@ -1,33 +1,81 @@
 {% extends "base.html" %}
 
-{% block title %}소개 - MyWebsite{% endblock %}
+{% block title %}회원가입{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div class="container">
-        <h1>회사 소개</h1>
-        <p>우리의 이야기를 들어보세요</p>
-    </div>
-</div>
-
-<div class="content-section">
-    <div class="container">
-        <div class="about-content">
-            <h2>우리의 미션</h2>
-            <p>우리는 고객에게 최고의 서비스를 제공하기 위해 노력합니다. 혁신적인 기술과 창의적인 아이디어로 더 나은 미래를 만들어갑니다.</p>
+<div class="form-container">
+    <h2>🆕 회원가입</h2>
+    <p>아래 정보를 입력하여 회원으로 가입하세요.</p>
+    
+    <form method="POST" class="register-form">
+        {{ form.hidden_tag() }}
+        
+        <div class="form-row">
+            <div class="form-group">
+                {{ form.username.label(class="form-label") }}
+                {{ form.username(class="form-input") }}
+                {% for error in form.username.errors %}
+                    <span class="error-message">{{ error }}</span>
+                {% endfor %}
+            </div>
             
-            <h2>우리의 비전</h2>
-            <p>업계 최고의 기업이 되어 고객과 사회에 가치를 창출하는 것이 우리의 비전입니다.</p>
-            
-            <h2>우리의 가치</h2>
-            <ul>
-                <li>고객 중심</li>
-                <li>품질 우선</li>
-                <li>지속적 혁신</li>
-                <li>팀워크</li>
-                <li>사회적 책임</li>
-            </ul>
+            <div class="form-group">
+                {{ form.email.label(class="form-label") }}
+                {{ form.email(class="form-input") }}
+                {% for error in form.email.errors %}
+                    <span class="error-message">{{ error }}</span>
+                {% endfor %}
+            </div>
         </div>
-    </div>
+
+        <div class="form-group">
+            {{ form.full_name.label(class="form-label") }}
+            {{ form.full_name(class="form-input") }}
+            {% for error in form.full_name.errors %}
+                <span class="error-message">{{ error }}</span>
+            {% endfor %}
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                {{ form.phone.label(class="form-label") }}
+                {{ form.phone(class="form-input", placeholder="010-1234-5678 (선택사항)") }}
+                {% for error in form.phone.errors %}
+                    <span class="error-message">{{ error }}</span>
+                {% endfor %}
+            </div>
+            
+            <div class="form-group">
+                {{ form.birth_date.label(class="form-label") }}
+                {{ form.birth_date(class="form-input") }}
+                {% for error in form.birth_date.errors %}
+                    <span class="error-message">{{ error }}</span>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                {{ form.password.label(class="form-label") }}
+                {{ form.password(class="form-input") }}
+                {% for error in form.password.errors %}
+                    <span class="error-message">{{ error }}</span>
+                {% endfor %}
+            </div>
+            
+            <div class="form-group">
+                {{ form.password_confirm.label(class="form-label") }}
+                {{ form.password_confirm(class="form-input") }}
+                {% for error in form.password_confirm.errors %}
+                    <span class="error-message">{{ error }}</span>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="form-actions">
+            {{ form.submit(class="btn btn-primary btn-large") }}
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">취소</a>
+        </div>
+    </form>
 </div>
 {% endblock %}
