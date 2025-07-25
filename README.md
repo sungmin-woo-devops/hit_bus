@@ -43,7 +43,7 @@ bus/
 │   └── settings.py
 ├── static/                # 정적 파일들
 ├── templates/             # 템플릿 파일들
-│   ├── team2_index.html   # Team2 통합 템플릿
+│   ├── team2.html         # Team2 통합 템플릿
 │   └── ...
 ├── data/                  # 데이터 파일들
 ├── map/                   # 지도 관련 파일들
@@ -59,10 +59,10 @@ bus/
 - **BusStop**: 버스 정류장 모델
 
 ### View (뷰)
-- **auth.py**: 인증 관련 라우트 (/login, /logout, /register)
-- **bus.py**: 버스 API 라우트 (/api/bus, /api/bus-stops, etc.)
-- **teams.py**: 팀별 페이지 라우트 (/team1, /team2, etc.)
-- **main.py**: 메인 페이지 라우트 (/)
+- **auth.py**: 인증 라우트 (`/auth/login`, `/auth/logout`, `/auth/register`)
+- **bus.py**: 버스 API 라우트 (`/api/bus`, `/api/bus-stops`, ...)
+- **teams.py**: 팀별 페이지 라우트 (`/team1`, `/team2`, ...)
+- **main.py**: 메인 페이지 라우트 (`/`)
 
 ### Controller (컨트롤러)
 - **AuthController**: 인증 관련 비즈니스 로직
@@ -125,10 +125,10 @@ python run.py
 
 ## API 엔드포인트
 
-### 인증 API
-- `POST /login`: 로그인
-- `POST /logout`: 로그아웃
-- `POST /register`: 회원가입
+### 인증 API (Blueprint: `auth`)
+- `POST /auth/login`: 로그인
+- `POST /auth/logout`: 로그아웃
+- `POST /auth/register`: 회원가입
 
 ### 버스 API
 - `GET /api/bus`: 버스 노선 정보

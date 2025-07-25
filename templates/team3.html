@@ -15,6 +15,7 @@
     <div class="team3-form">
         <h2>2024년 수원시 노선을 선택하세요</h2>
         <form method="POST" action="/team3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
             <select name="route" class="team3-select" required>
                 {% for route in routes %}
                     <option value="{{ route }}">{{ route }}</option>
