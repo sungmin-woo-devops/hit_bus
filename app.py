@@ -1,3 +1,10 @@
+<<<<<<< HEAD
+=======
+from flask import Flask, render_template, jsonify, request, send_file, flash, redirect, url_for, session, g
+from forms import SimpleRegistrationForm, LoginForm
+from database import UserDatabase
+import requests
+>>>>>>> 080a139abd55169e2bf1a453dad0e0be94e68be0
 import json
 import os
 import pandas as pd
@@ -10,12 +17,24 @@ from map.map import BusRouteMapper, create_bus_route_map, get_routes_data_summar
 app = Flask(__name__)
 app.secret_key = 'super-secret-key'  # CSRF 보호를 위해 시크릿 키를 설정합니다.
 
+<<<<<<< HEAD
 # TEAM1 envs
 API_KEY = "Q87H6RHMmHu5VIe9CJqbwVioFAV+HE/319+CbDQqB6HgCx8sp4nZafCs+X5eFeY31zuCs0mGyDkeFkRcGxWQjw=="
 BASE = "http://apis.data.go.kr/6410000/busrouteservice/v2"
 
 # 데이터베이스 초기화 (CloudType 사용)
 db = UserDatabase(use_cloud=True)
+=======
+API_KEY = "Q87H6RHMmHu5VIe9CJqbwVioFAV+HE/319+CbDQqB6HgCx8sp4nZafCs+X5eFeY31zuCs0mGyDkeFkRcGxWQjw=="
+BASE = "http://apis.data.go.kr/6410000/busrouteservice/v2"
+# 데이터베이스 초기화
+db = UserDatabase(
+    host='localhost',
+    user='root',
+    password='1111',  # 실제 비밀번호로 변경
+    database='test'
+)
+>>>>>>> 080a139abd55169e2bf1a453dad0e0be94e68be0
 
 @app.before_request
 def load_logged_in_user():
@@ -61,6 +80,7 @@ def logout():
 def home():
     return render_template('home.html')
 
+<<<<<<< HEAD
 # team1
 @app.route('/api/bus', methods=['GET'])
 def get_bus():
@@ -129,6 +149,47 @@ def get_bus():
         print(f"예상치 못한 오류: {e}")
         return jsonify({"error": "서버 내부 오류가 발생했습니다."}), 500
 
+=======
+
+
+
+@app.route('/api/bus', methods=['GET'])
+def get_bus():
+    route_name = request.args.get('route')
+    if not route_name:
+        return jsonify({"error": "route 파라미터 필요"}), 400
+
+    
+    resp1 = requests.get(f"{BASE}/getBusRouteListv2", params={
+        'serviceKey': API_KEY,
+        'keyword': route_name,
+        'format': 'json'
+    }, timeout=5)
+    resp1.raise_for_status()
+    data1 = resp1.json().get('response', {}).get('msgBody', {}).get('busRouteList')
+    if not data1:
+        return jsonify({"error": "노선을 찾을 수 없습니다."}), 404
+
+    
+    route = data1 if isinstance(data1, dict) else data1[0]
+    route_id = route.get('routeId')
+
+ 
+    resp2 = requests.get(f"{BASE}/getBusRouteInfoItemv2", params={
+        'serviceKey': API_KEY,
+        'routeId': route_id,
+        'format': 'json'
+    }, timeout=5)
+    resp2.raise_for_status()
+    info = resp2.json().get('response', {}).get('msgBody', {}).get('busRouteInfoItem')
+    if not info:
+        return jsonify({"error": "노선 정보가 없습니다."}), 404
+
+    return jsonify({
+        "route": route,
+        "info": info
+    })
+>>>>>>> 080a139abd55169e2bf1a453dad0e0be94e68be0
 
 @app.route('/team1')
 def get_team1():

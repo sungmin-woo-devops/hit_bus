@@ -4,38 +4,62 @@
 
 {% block extra_css %}
 <style>
+  :root {
+    --main-color: #2d8cf0;
+    --main-hover: #1a75d1;
+    --text-color: #333;
+    --label-color: #555;
+    --value-color: #222;
+    --error-color: red;
+    --box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  }
+
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #f9f9f9;
+    color: var(--text-color);
+  }
+
   h1 {
     text-align: center;
-    color: #333;
+    color: var(--text-color);
     margin-top: 8rem;
+    font-size: 2rem;
   }
 
   .search-box {
     text-align: center;
-    margin-bottom: 20px;
+    margin: 2rem 0;
   }
 
   input[type="text"] {
-    padding: 8px;
-    font-size: 16px;
+    padding: 0.5rem 0.75rem;
+    font-size: 1rem;
     width: 200px;
     border-radius: 4px;
     border: 1px solid #ccc;
+    transition: border 0.3s ease;
+  }
+
+  input[type="text"]:focus {
+    outline: none;
+    border-color: var(--main-color);
   }
 
   button {
-    padding: 8px 16px;
-    font-size: 16px;
-    background-color: #2d8cf0;
-    color: white;
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    background-color: var(--main-color);
+    color: #fff;
     border: none;
     border-radius: 4px;
-    margin-left: 5px;
+    margin-left: 0.5rem;
     cursor: pointer;
+    transition: background-color 0.3s ease;
   }
 
   button:hover {
-    background-color: #1a75d1;
+    background-color: var(--main-hover);
   }
 
   .card {
@@ -45,32 +69,46 @@
     max-width: 600px;
     margin: 20px auto;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  }
+    }
 
-  .label {
+   .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    gap: 1rem;
+    flex-wrap: wrap;
+    }
+
+    .label {
     font-weight: bold;
-    color: #555;
-    width: 160px;
-    display: inline-block;
-  }
+    color: var(--label-color);
+    min-width: 140px;
+    max-width: 200px;
+    word-break: keep-all;
+    flex-shrink: 0;
+    }
 
-  .value {
-    color: #222;
-  }
-
-  .row {
-    margin-bottom: 10px;
-  }
+    .value {
+    color: var(--value-color);
+    flex: 1;
+    white-space: normal;
+    word-break: break-word;
+    }
 
   .hidden {
     display: none;
+  }
+
+  #error {
+    color: var(--error-color);
+    text-align: center;
   }
 </style>
 {% endblock %}
 
 {% block content %}
-<h1>🚌 버스 노선 정보 조회</h1>
-
+<h1>🚎 버스 노선 정보 조회</h1>
 <div class="search-box">
   <input type="text" id="routeInput" placeholder="예: 13-4" onkeypress="handleKeyPress(event)" />
   <button onclick="searchBus()">조회</button>
@@ -87,8 +125,8 @@
     routeTypeName: "노선유형",
     upFirstTime: "첫차 시간",
     downLastTime: "막차 시간",
-    peekAlloc: "혼잡시 배차 간격 (분)",
-    nPeekAlloc: "비혼잡 배차 간격 (분)",
+    peekAlloc: "혼잡시 배차 간격(분)",
+    nPeekAlloc: "비혼잡 배차 간격(분)",
     startStationName: "출발 정류소",
     endStationName: "종착 정류소",
     companyName: "운송 회사",
@@ -118,47 +156,24 @@
 
   function searchBus() {
     const keyword = document.getElementById("routeInput").value.trim();
-    if (!keyword) {
-      alert("버스 번호를 입력하세요.");
-      return;
-    }
-
-    // 로딩 상태 표시
-    const container = document.getElementById("busInfo");
-    const error = document.getElementById("error");
-    container.classList.add("hidden");
-    error.classList.add("hidden");
-    
-    // 임시 로딩 메시지
-    error.textContent = "🔄 버스 정보를 조회하고 있습니다...";
-    error.style.color = "#2d8cf0";
-    error.classList.remove("hidden");
-
-    console.log(`버스 노선 검색 시작: ${keyword}`);
+    if (!keyword) return alert("버스 번호를 입력하세요.");
 
     fetch(`/api/bus?route=${encodeURIComponent(keyword)}`)
-      .then(res => {
-        console.log(`API 응답 상태: ${res.status}`);
-        if (!res.ok) {
-          return res.json().then(errorData => {
-            throw new Error(errorData.error || `HTTP ${res.status}`);
-          });
-        }
-        return res.json();
-      })
+      .then(res => res.json())
       .then(data => {
-        console.log('API 응답 데이터:', data);
-        error.classList.add("hidden");
-        
         const info = data.info;
+        const container = document.getElementById("busInfo");
+        const error = document.getElementById("error");
+        container.classList.add("hidden");
+        error.classList.add("hidden");
+
         if (!info || Object.keys(info).length === 0) {
           error.textContent = "❌ 버스 정보를 찾을 수 없습니다.";
-          error.style.color = "red";
           error.classList.remove("hidden");
           return;
         }
 
-        const content = displayOrder
+        container.innerHTML = displayOrder
           .filter(key => info[key])
           .map(key => `
             <div class="row">
@@ -167,20 +182,11 @@
             </div>`)
           .join("");
 
-        if (content) {
-          container.innerHTML = content;
-          container.classList.remove("hidden");
-          console.log('버스 정보 표시 완료');
-        } else {
-          error.textContent = "❌ 표시할 버스 정보가 없습니다.";
-          error.style.color = "red";
-          error.classList.remove("hidden");
-        }
+        container.classList.remove("hidden");
       })
-      .catch(err => {
-        console.error('API 호출 오류:', err);
-        error.textContent = `❌ ${err.message || '오류가 발생했습니다. 다시 시도해주세요.'}`;
-        error.style.color = "red";
+      .catch(() => {
+        const error = document.getElementById("error");
+        error.textContent = "⚠️ 오류가 발생했습니다. 다시 시도해주세요.";
         error.classList.remove("hidden");
       });
   }
