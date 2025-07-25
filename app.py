@@ -1,21 +1,21 @@
-from flask import Flask, render_template, jsonify, request, send_file, flash, redirect, url_for, session, g
-from forms import SimpleRegistrationForm, LoginForm
-from database import UserDatabase
 import json
 import os
 import pandas as pd
+import requests
+from flask import Flask, render_template, jsonify, request, send_file, flash, redirect, url_for, session, g
+from database import UserDatabase
+from forms import SimpleRegistrationForm, LoginForm
 from map.map import BusRouteMapper, create_bus_route_map, get_routes_data_summary
 
 app = Flask(__name__)
 app.secret_key = 'super-secret-key'  # CSRF 보호를 위해 시크릿 키를 설정합니다.
 
-# 데이터베이스 초기화
-db = UserDatabase(
-    host='localhost',
-    user='root',
-    password='1111',  # 실제 비밀번호로 변경
-    database='test'
-)
+# TEAM1 envs
+API_KEY = "Q87H6RHMmHu5VIe9CJqbwVioFAV+HE/319+CbDQqB6HgCx8sp4nZafCs+X5eFeY31zuCs0mGyDkeFkRcGxWQjw=="
+BASE = "http://apis.data.go.kr/6410000/busrouteservice/v2"
+
+# 데이터베이스 초기화 (CloudType 사용)
+db = UserDatabase(use_cloud=True)
 
 @app.before_request
 def load_logged_in_user():
@@ -25,7 +25,12 @@ def load_logged_in_user():
     if user_id is None:
         g.user = None
     else:
-        g.user = db.get_user_by_id(user_id)
+        try:
+            g.user = db.get_user_by_id(user_id)
+        except Exception as e:
+            print(f"데이터베이스 연결 오류: {e}")
+            g.user = None
+            session.clear()  # 오류 시 세션 초기화
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -56,6 +61,75 @@ def logout():
 def home():
     return render_template('home.html')
 
+# team1
+@app.route('/api/bus', methods=['GET'])
+def get_bus():
+    """버스 노선 정보 API"""
+    try:
+        route_name = request.args.get('route')
+        if not route_name:
+            return jsonify({"error": "route 파라미터가 필요합니다."}), 400
+
+        print(f"버스 노선 검색: {route_name}")
+
+        # 1단계: 노선 목록 조회
+        resp1 = requests.get(f"{BASE}/getBusRouteListv2", params={
+            'serviceKey': API_KEY,
+            'keyword': route_name,
+            'format': 'json'
+        }, timeout=10)
+        
+        if resp1.status_code != 200:
+            print(f"API 호출 실패 - 상태코드: {resp1.status_code}")
+            return jsonify({"error": f"API 호출 실패: {resp1.status_code}"}), 500
+            
+        data1 = resp1.json().get('response', {}).get('msgBody', {}).get('busRouteList')
+        if not data1:
+            print(f"노선을 찾을 수 없음: {route_name}")
+            return jsonify({"error": "노선을 찾을 수 없습니다."}), 404
+
+        # 노선이 리스트인 경우 첫 번째 항목 선택
+        route = data1 if isinstance(data1, dict) else data1[0]
+        route_id = route.get('routeId')
+        
+        if not route_id:
+            return jsonify({"error": "노선 ID를 찾을 수 없습니다."}), 404
+
+        print(f"노선 ID 찾음: {route_id}")
+
+        # 2단계: 노선 상세 정보 조회
+        resp2 = requests.get(f"{BASE}/getBusRouteInfoItemv2", params={
+            'serviceKey': API_KEY,
+            'routeId': route_id,
+            'format': 'json'
+        }, timeout=10)
+        
+        if resp2.status_code != 200:
+            print(f"노선 정보 API 호출 실패 - 상태코드: {resp2.status_code}")
+            return jsonify({"error": f"노선 정보 API 호출 실패: {resp2.status_code}"}), 500
+            
+        info = resp2.json().get('response', {}).get('msgBody', {}).get('busRouteInfoItem')
+        if not info:
+            print(f"노선 정보가 없음: {route_id}")
+            return jsonify({"error": "노선 정보가 없습니다."}), 404
+
+        print(f"노선 정보 조회 성공: {route_name}")
+        return jsonify({
+            "route": route,
+            "info": info
+        })
+
+    except requests.exceptions.Timeout:
+        print("API 호출 타임아웃")
+        return jsonify({"error": "API 응답 시간이 초과되었습니다. 다시 시도해주세요."}), 408
+    except requests.exceptions.RequestException as e:
+        print(f"API 호출 오류: {e}")
+        return jsonify({"error": "외부 API 호출 중 오류가 발생했습니다."}), 500
+    except Exception as e:
+        print(f"예상치 못한 오류: {e}")
+        return jsonify({"error": "서버 내부 오류가 발생했습니다."}), 500
+
+
 @app.route('/team1')
 def get_team1():
     return render_template('team1.html')
@@ -64,7 +138,7 @@ def get_team1():
 def get_team2():
     try:
         # 데이터 파일 경로
-        data_path = os.path.join(os.path.dirname(__file__), 'data', 'bus_data.csv')
+        data_path = os.path.join(os.path.dirname(__file__), 'data', 'gyeonggi_bus_stop_2023.csv')
         
         # CSV 파일 읽기
         df = pd.read_csv(data_path)
@@ -108,7 +182,7 @@ def get_team2():
 def get_team3():
     try:
         # 데이터 파일 경로
-        data_path = os.path.join(os.path.dirname(__file__), 'data', 'df_suwon_flask.csv')
+        data_path = os.path.join(os.path.dirname(__file__), 'data', 'suwon_bus_stop_2024.csv')
         
         # CSV 파일 읽기
         df = pd.read_csv(data_path)
@@ -212,149 +286,6 @@ def get_team5():
     
     return render_template('team5.html', form=form)
 
-# D3.js 지도 API 엔드포인트
-@app.route('/api/bus-stops')
-def get_bus_stops():
-    """버스 정류장 데이터 API"""
-    # 샘플 데이터 (실제로는 데이터베이스에서 가져옴)
-    bus_stops = [
-        {
-            "id": 1,
-            "name": "수원시청",
-            "lat": 37.2636,
-            "lng": 127.0286,
-            "routes": 15,
-            "address": "경기도 수원시 팔달구 효원로 241"
-        },
-        {
-            "id": 2,
-            "name": "수원역",
-            "lat": 37.2659,
-            "lng": 127.0001,
-            "routes": 23,
-            "address": "경기도 수원시 팔달구 경수대로 269"
-        },
-        {
-            "id": 3,
-            "name": "수원고등학교",
-            "lat": 37.2800,
-            "lng": 127.0150,
-            "routes": 8,
-            "address": "경기도 수원시 팔달구 창룡대로 103"
-        },
-        {
-            "id": 4,
-            "name": "수원시민공원",
-            "lat": 37.2750,
-            "lng": 127.0200,
-            "routes": 12,
-            "address": "경기도 수원시 팔달구 창룡대로 103"
-        },
-        {
-            "id": 5,
-            "name": "수원종합운동장",
-            "lat": 37.2900,
-            "lng": 127.0100,
-            "routes": 6,
-            "address": "경기도 수원시 팔달구 창룡대로 103"
-        }
-    ]
-    return jsonify(bus_stops)
-
-@app.route('/api/bus-routes')
-def get_bus_routes():
-    """버스 노선 데이터 API"""
-    # 샘플 데이터 (실제로는 데이터베이스에서 가져옴)
-    bus_routes = [
-        {
-            "id": 1,
-            "name": "수원시청 ↔ 수원역",
-            "coordinates": [[127.0286, 37.2636], [127.0001, 37.2659]],
-            "stops": 8,
-            "type": "시내버스",
-            "frequency": "10분"
-        },
-        {
-            "id": 2,
-            "name": "수원고등학교 ↔ 수원시민공원",
-            "coordinates": [[127.0150, 37.2800], [127.0200, 37.2750]],
-            "stops": 5,
-            "type": "마을버스",
-            "frequency": "15분"
-        },
-        {
-            "id": 3,
-            "name": "수원종합운동장 ↔ 수원시청",
-            "coordinates": [[127.0100, 37.2900], [127.0286, 37.2636]],
-            "stops": 12,
-            "type": "시내버스",
-            "frequency": "20분"
-        }
-    ]
-    return jsonify(bus_routes)
-
-@app.route('/api/regions')
-def get_regions():
-    """지역 데이터 API"""
-    # 샘플 데이터 (실제로는 데이터베이스에서 가져옴)
-    regions = [
-        {
-            "id": 1,
-            "name": "수원시",
-            "code": "41110",
-            "population": 1200000,
-            "area": 121.0
-        },
-        {
-            "id": 2,
-            "name": "성남시",
-            "code": "41130",
-            "population": 950000,
-            "area": 141.8
-        },
-        {
-            "id": 3,
-            "name": "용인시",
-            "code": "41460",
-            "population": 1100000,
-            "area": 591.3
-        }
-    ]
-    return jsonify(regions)
-
-@app.route('/api/map-data')
-def get_map_data():
-    """통합 지도 데이터 API"""
-    try:
-        # 실제 데이터 파일이 있다면 여기서 로드
-        # data_file = os.path.join(app.root_path, 'data', 'map_data.json')
-        # with open(data_file, 'r', encoding='utf-8') as f:
-        #     data = json.load(f)
-        
-        # 샘플 통합 데이터
-        data = {
-            "bus_stops": [
-                {"name": "수원시청", "lat": 37.2636, "lng": 127.0286, "routes": 15},
-                {"name": "수원역", "lat": 37.2659, "lng": 127.0001, "routes": 23},
-                {"name": "수원고등학교", "lat": 37.2800, "lng": 127.0150, "routes": 8}
-            ],
-            "bus_routes": [
-                {
-                    "name": "수원시청 ↔ 수원역",
-                    "coordinates": [[127.0286, 37.2636], [127.0001, 37.2659]],
-                    "stops": 8
-                }
-            ],
-            "statistics": {
-                "total_stops": 150,
-                "total_routes": 45,
-                "total_vehicles": 280
-            }
-        }
-        return jsonify(data)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
 # Folium 지도 관련 API 엔드포인트
 @app.route('/api/bus-map')
 def get_bus_map():
@@ -411,4 +342,4 @@ def get_routes_summary_api():
         }), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, threaded=True)
