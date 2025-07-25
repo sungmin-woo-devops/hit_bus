@@ -74,10 +74,10 @@
    .row {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: flex-start; /* ← top 정렬로 바꿔 텍스트 밀림 방지 */
     margin-bottom: 12px;
-    gap: 1rem;
-    flex-wrap: wrap;
+    gap: 1rem; /* ← 좌우 여백 부여 */
+    flex-wrap: wrap; /* ← 필요한 경우 줄바꿈 허용 */
     }
 
     .label {
@@ -92,8 +92,8 @@
     .value {
     color: var(--value-color);
     flex: 1;
-    white-space: normal;
-    word-break: break-word;
+    white-space: normal; /* ← 줄바꿈 허용 */
+    word-break: break-word; /* ← 너무 긴 값이 박스를 넘지 않도록 */
     }
 
   .hidden {
@@ -109,8 +109,9 @@
 
 {% block content %}
 <h1>🚎 버스 노선 정보 조회</h1>
+
 <div class="search-box">
-  <input type="text" id="routeInput" placeholder="예: 13-4" onkeypress="handleKeyPress(event)" />
+  <input type="text" id="routeInput" placeholder="예: 13-4" />
   <button onclick="searchBus()">조회</button>
 </div>
 
@@ -147,12 +148,6 @@
     "companyTel",
     "regionName"
   ];
-
-  function handleKeyPress(event) {
-    if (event.key === 'Enter') {
-      searchBus();
-    }
-  }
 
   function searchBus() {
     const keyword = document.getElementById("routeInput").value.trim();

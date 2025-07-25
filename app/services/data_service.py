@@ -78,10 +78,34 @@ class DataService:
             if df is not None and not df.empty:
                 # 전처리 수행
                 df['이용객수'] = pd.to_numeric(df['이용객수'], errors='coerce')
+
+                # DB 스키마에 따라 '시작시간' 컬럼이 없을 수도 있음 → 유연하게 처리
+                if '시작시간' not in df.columns:
+                    # 만일 '시간' 또는 '시간범위' 컬럼이 있다면 정규식으로 숫자(시)를 추출해 생성
+                    time_col = None
+                    for col in ['시간', '시간범위', '시작시']:
+                        if col in df.columns:
+                            time_col = col
+                            break
+                    if time_col:
+                        df['시작시간'] = (
+                            df[time_col]
+                            .astype(str)
+                            .str.extract(r'(\d{1,2})')
+                            .astype(float)
+                        )
+                    else:
+                        # 생성 불가 시 NaN 으로 채움
+                        df['시작시간'] = pd.NA
+
                 df['시작시간'] = pd.to_numeric(df['시작시간'], errors='coerce')
                 df['노선'] = df['노선'].astype(str).str.strip()
             
-            return df if df is not None else pd.DataFrame()
+            if df is not None and not df.empty:
+                return df
+            # DB 가 비어있으면 CSV 폴백
+            print("DB 데이터가 없거나 조회 실패 - CSV로 폴백합니다.")
+            return self.load_team2_data()
         except Exception as e:
             print(f"team2 데이터베이스 로드 오류: {e}")
             return pd.DataFrame()

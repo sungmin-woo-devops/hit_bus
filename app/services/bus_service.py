@@ -2,14 +2,25 @@ import requests
 import pandas as pd
 from typing import Dict, List, Any, Optional
 from flask import current_app
+from flask import has_app_context
 from app.utils.helpers import load_csv_data, format_bus_data, create_table_html, validate_route_name
 
 class BusService:
     """버스 서비스 클래스"""
     
     def __init__(self):
-        self.api_key = current_app.config.get('API_KEY') if current_app else "Q87H6RHMmHu5VIe9CJqbwVioFAV+HE/319+CbDQqB6HgCx8sp4nZafCs+X5eFeY31zuCs0mGyDkeFkRcGxWQjw=="
-        self.base_url = current_app.config.get('BASE_URL') if current_app else "http://apis.data.go.kr/6410000/busrouteservice/v2"
+        # Flask 애플리케이션 컨텍스트가 존재할 때만 current_app을 사용합니다.
+        default_api_key = "Q87H6RHMmHu5VIe9CJqbwVioFAV+HE/319+CbDQqB6HgCx8sp4nZafCs+X5eFeY31zuCs0mGyDkeFkRcGxWQjw=="
+        default_base_url = "http://apis.data.go.kr/6410000/busrouteservice/v2"
+
+        if has_app_context():
+            # 컨텍스트 내부에서는 설정값을 우선 사용하고, 없으면 기본값 사용
+            self.api_key = current_app.config.get('API_KEY', default_api_key)
+            self.base_url = current_app.config.get('BASE_URL', default_base_url)
+        else:
+            # 컨텍스트가 없을 때는 기본값을 사용해 초기화합니다.
+            self.api_key = default_api_key
+            self.base_url = default_base_url
     
     def get_bus_route_info(self, route_name: str) -> Dict[str, Any]:
         """버스 노선 정보 조회"""

@@ -39,7 +39,7 @@ class Team2Controller:
             chart_values = list(grouped.values)
             
             return render_template(
-                'team2_index.html',
+                'team2.html',
                 table=table_html,
                 routes=top_routes,
                 selected_route=selected_route,
