@@ -1,33 +1,189 @@
 {% extends "base.html" %}
 
-{% block title %}소개 - MyWebsite{% endblock %}
+{% block title %}버스 노선 정보 - MyWebsite{% endblock %}
+
+{% block extra_css %}
+<style>
+  :root {
+    --main-color: #2d8cf0;
+    --main-hover: #1a75d1;
+    --text-color: #333;
+    --label-color: #555;
+    --value-color: #222;
+    --error-color: red;
+    --box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  }
+
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #f9f9f9;
+    color: var(--text-color);
+  }
+
+  h1 {
+    text-align: center;
+    color: var(--text-color);
+    margin-top: 8rem;
+    font-size: 2rem;
+  }
+
+  .search-box {
+    text-align: center;
+    margin: 2rem 0;
+  }
+
+  input[type="text"] {
+    padding: 0.5rem 0.75rem;
+    font-size: 1rem;
+    width: 200px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    transition: border 0.3s ease;
+  }
+
+  input[type="text"]:focus {
+    outline: none;
+    border-color: var(--main-color);
+  }
+
+  button {
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    background-color: var(--main-color);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    margin-left: 0.5rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+
+  button:hover {
+    background-color: var(--main-hover);
+  }
+
+  .card {
+    background-color: white;
+    border-radius: 8px;
+    padding: 20px;
+    max-width: 600px;
+    margin: 20px auto;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+
+   .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start; /* ← top 정렬로 바꿔 텍스트 밀림 방지 */
+    margin-bottom: 12px;
+    gap: 1rem; /* ← 좌우 여백 부여 */
+    flex-wrap: wrap; /* ← 필요한 경우 줄바꿈 허용 */
+    }
+
+    .label {
+    font-weight: bold;
+    color: var(--label-color);
+    min-width: 140px;
+    max-width: 200px;
+    word-break: keep-all;
+    flex-shrink: 0;
+    }
+
+    .value {
+    color: var(--value-color);
+    flex: 1;
+    white-space: normal; /* ← 줄바꿈 허용 */
+    word-break: break-word; /* ← 너무 긴 값이 박스를 넘지 않도록 */
+    }
+
+  .hidden {
+    display: none;
+  }
+
+  #error {
+    color: var(--error-color);
+    text-align: center;
+  }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div class="container">
-        <h1>회사 소개</h1>
-        <p>우리의 이야기를 들어보세요</p>
-    </div>
+<h1>🚎 버스 노선 정보 조회</h1>
+
+<div class="search-box">
+  <input type="text" id="routeInput" placeholder="예: 13-4" />
+  <button onclick="searchBus()">조회</button>
 </div>
 
-<div class="content-section">
-    <div class="container">
-        <div class="about-content">
-            <h2>우리의 미션</h2>
-            <p>우리는 고객에게 최고의 서비스를 제공하기 위해 노력합니다. 혁신적인 기술과 창의적인 아이디어로 더 나은 미래를 만들어갑니다.</p>
-            
-            <h2>우리의 비전</h2>
-            <p>업계 최고의 기업이 되어 고객과 사회에 가치를 창출하는 것이 우리의 비전입니다.</p>
-            
-            <h2>우리의 가치</h2>
-            <ul>
-                <li>고객 중심</li>
-                <li>품질 우선</li>
-                <li>지속적 혁신</li>
-                <li>팀워크</li>
-                <li>사회적 책임</li>
-            </ul>
-        </div>
-    </div>
-</div>
+<div id="busInfo" class="card hidden"></div>
+<div id="error" class="card hidden" style="color: red; text-align: center;"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const labelMap = {
+    routeName: "노선",
+    routeTypeName: "노선유형",
+    upFirstTime: "첫차 시간",
+    downLastTime: "막차 시간",
+    peekAlloc: "혼잡시 배차 간격(분)",
+    nPeekAlloc: "비혼잡 배차 간격(분)",
+    startStationName: "출발 정류소",
+    endStationName: "종착 정류소",
+    companyName: "운송 회사",
+    companyTel: "회사 연락처",
+    regionName: "운행 지역"
+  };
+
+  const displayOrder = [
+    "routeName",
+    "routeTypeName",
+    "upFirstTime",
+    "downLastTime",
+    "peekAlloc",
+    "nPeekAlloc",
+    "startStationName",
+    "endStationName",
+    "companyName",
+    "companyTel",
+    "regionName"
+  ];
+
+  function searchBus() {
+    const keyword = document.getElementById("routeInput").value.trim();
+    if (!keyword) return alert("버스 번호를 입력하세요.");
+
+    fetch(`/api/bus?route=${encodeURIComponent(keyword)}`)
+      .then(res => res.json())
+      .then(data => {
+        const info = data.info;
+        const container = document.getElementById("busInfo");
+        const error = document.getElementById("error");
+        container.classList.add("hidden");
+        error.classList.add("hidden");
+
+        if (!info || Object.keys(info).length === 0) {
+          error.textContent = "❌ 버스 정보를 찾을 수 없습니다.";
+          error.classList.remove("hidden");
+          return;
+        }
+
+        container.innerHTML = displayOrder
+          .filter(key => info[key])
+          .map(key => `
+            <div class="row">
+              <span class="label">${labelMap[key]}</span>
+              <span class="value">${info[key]}</span>
+            </div>`)
+          .join("");
+
+        container.classList.remove("hidden");
+      })
+      .catch(() => {
+        const error = document.getElementById("error");
+        error.textContent = "⚠️ 오류가 발생했습니다. 다시 시도해주세요.";
+        error.classList.remove("hidden");
+      });
+  }
+</script>
 {% endblock %}

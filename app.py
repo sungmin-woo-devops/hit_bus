@@ -1,6 +1,7 @@
 from flask import Flask, render_template, jsonify, request, send_file, flash, redirect, url_for, session, g
 from forms import SimpleRegistrationForm, LoginForm
 from database import UserDatabase
+import requests
 import json
 import os
 import pandas as pd
@@ -9,6 +10,8 @@ from map.map import BusRouteMapper, create_bus_route_map, get_routes_data_summar
 app = Flask(__name__)
 app.secret_key = 'super-secret-key'  # CSRF 보호를 위해 시크릿 키를 설정합니다.
 
+API_KEY = "Q87H6RHMmHu5VIe9CJqbwVioFAV+HE/319+CbDQqB6HgCx8sp4nZafCs+X5eFeY31zuCs0mGyDkeFkRcGxWQjw=="
+BASE = "http://apis.data.go.kr/6410000/busrouteservice/v2"
 # 데이터베이스 초기화
 db = UserDatabase(
     host='localhost',
@@ -55,6 +58,46 @@ def logout():
 @app.route('/')
 def home():
     return render_template('home.html')
+
+
+
+
+@app.route('/api/bus', methods=['GET'])
+def get_bus():
+    route_name = request.args.get('route')
+    if not route_name:
+        return jsonify({"error": "route 파라미터 필요"}), 400
+
+    
+    resp1 = requests.get(f"{BASE}/getBusRouteListv2", params={
+        'serviceKey': API_KEY,
+        'keyword': route_name,
+        'format': 'json'
+    }, timeout=5)
+    resp1.raise_for_status()
+    data1 = resp1.json().get('response', {}).get('msgBody', {}).get('busRouteList')
+    if not data1:
+        return jsonify({"error": "노선을 찾을 수 없습니다."}), 404
+
+    
+    route = data1 if isinstance(data1, dict) else data1[0]
+    route_id = route.get('routeId')
+
+ 
+    resp2 = requests.get(f"{BASE}/getBusRouteInfoItemv2", params={
+        'serviceKey': API_KEY,
+        'routeId': route_id,
+        'format': 'json'
+    }, timeout=5)
+    resp2.raise_for_status()
+    info = resp2.json().get('response', {}).get('msgBody', {}).get('busRouteInfoItem')
+    if not info:
+        return jsonify({"error": "노선 정보가 없습니다."}), 404
+
+    return jsonify({
+        "route": route,
+        "info": info
+    })
 
 @app.route('/team1')
 def get_team1():
